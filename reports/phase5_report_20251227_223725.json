@@ -1,0 +1,94 @@
+{
+  "timestamp": "2025-12-27T22:37:25.692494",
+  "total_pages": 371,
+  "table_pages": 14,
+  "detected_table_pages": 315,
+  "exam_count": 21,
+  "validation_warning_count": 0,
+  "exams_summary": [
+    {
+      "exam_id": "2025-06",
+      "page_range": "6-7"
+    },
+    {
+      "exam_id": "2025-06",
+      "page_range": "8-27"
+    },
+    {
+      "exam_id": "2025-06",
+      "page_range": "28-37"
+    },
+    {
+      "exam_id": "2025-03",
+      "page_range": "38-58"
+    },
+    {
+      "exam_id": "2025-03",
+      "page_range": "59-73"
+    },
+    {
+      "exam_id": "2024-12",
+      "page_range": "74-91"
+    },
+    {
+      "exam_id": "2024-12",
+      "page_range": "92-102"
+    },
+    {
+      "exam_id": "2024-09",
+      "page_range": "103-123"
+    },
+    {
+      "exam_id": "2024-09",
+      "page_range": "124-133"
+    },
+    {
+      "exam_id": "2024-06",
+      "page_range": "134-151"
+    },
+    {
+      "exam_id": "2024-06",
+      "page_range": "152-162"
+    },
+    {
+      "exam_id": "2024-03",
+      "page_range": "163-180"
+    },
+    {
+      "exam_id": "2024-03",
+      "page_range": "181-195"
+    },
+    {
+      "exam_id": "2023-09",
+      "page_range": "196-215"
+    },
+    {
+      "exam_id": "2023-09",
+      "page_range": "216-231"
+    },
+    {
+      "exam_id": "2023-06",
+      "page_range": "232-252"
+    },
+    {
+      "exam_id": "2023-06",
+      "page_range": "253-268"
+    },
+    {
+      "exam_id": "2023-03",
+      "page_range": "269-289"
+    },
+    {
+      "exam_id": "2023-03",
+      "page_range": "290-305"
+    },
+    {
+      "exam_id": "2022-03",
+      "page_range": "306-328"
+    },
+    {
+      "exam_id": "2022-03",
+      "page_range": "329-371"
+    }
+  ]
+}

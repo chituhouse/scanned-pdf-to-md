@@ -1,0 +1,33 @@
+# 图片文件夹（太大）
+PDF_image/
+
+# 输出文件（用户自行生成）
+output/
+
+# macOS 系统文件
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 敏感凭证
+scripts/config.py
+secret.txt
+.env
+
+# 测试文件
+test_*.py
+test_*.json
+test_*.txt
+test_*.md
+
+# 源PDF和本地文档
+*.pdf
+文档集合/
+火山引擎*.md
+
+# IDE
+.vscode/
+.idea/

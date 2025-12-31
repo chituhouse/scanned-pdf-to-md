@@ -1,0 +1,10 @@
+{
+  "phase": "Phase1_BatchOCR",
+  "timestamp": "2025-12-27T21:56:41.522055",
+  "total_files": 361,
+  "success_count": 361,
+  "fail_count": 0,
+  "total_time_seconds": 666.8984799385071,
+  "start_page": 11,
+  "end_page": 371
+}
