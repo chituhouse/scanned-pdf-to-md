@@ -140,14 +140,22 @@
 
 ### 前置要求
 
-- Python 3.8+
-- Claude Code（Anthropic CLI工具）
-- 火山引擎账号（OCR API）
+- **Python 3.8+**
+- **Claude Code** - Anthropic 官方 CLI 工具
+  ```bash
+  # macOS / Linux
+  curl -fsSL https://claude.ai/install.sh | sh
+
+  # 或通过 npm
+  npm install -g @anthropic-ai/claude-code
+  ```
+  安装后运行 `claude` 并按提示登录 Anthropic 账号
+- **火山引擎账号** - 用于 OCR API（[注册地址](https://www.volcengine.com/)）
 
 ### Step 1: 克隆项目
 
 ```bash
-git clone https://github.com/your-username/scanned-pdf-to-md.git
+git clone https://github.com/chituhouse/scanned-pdf-to-md.git
 cd scanned-pdf-to-md
 pip install -r requirements.txt
 ```
