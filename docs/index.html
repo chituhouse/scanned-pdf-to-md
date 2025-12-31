@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>scanned-pdf-to-md | 双源OCR交叉验证方法论</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #14b8a6;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --gradient-1: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+            --gradient-2: linear-gradient(135deg, #14b8a6 0%, #6366f1 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* Background Effect */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .bg-gradient::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 50% 50%, rgba(20, 184, 166, 0.08) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(5deg); }
+            66% { transform: translate(-20px, 20px) rotate(-5deg); }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 2rem;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        nav .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .github-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .github-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 2rem 4rem;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 900px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 50px;
+            font-size: 0.85rem;
+            color: var(--primary);
+            margin-bottom: 2rem;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero h1 span {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--primary);
+        }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            margin-top: 4rem;
+            padding-top: 4rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: var(--gradient-2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Section */
+        section {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Problem & Solution */
+        .problem-solution {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icon.red { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+        .card-icon.green { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+        .card-icon.blue { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+        .card-icon.purple { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
+        .card-icon.teal { background: rgba(20, 184, 166, 0.1); color: #14b8a6; }
+        .card-icon.orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Architecture Diagram */
+        .architecture {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 3rem;
+            margin: 4rem 0;
+        }
+
+        .arch-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .arch-node {
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            text-align: center;
+            min-width: 200px;
+            transition: all 0.3s;
+        }
+
+        .arch-node:hover {
+            border-color: var(--primary);
+        }
+
+        .arch-node.primary {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .arch-node.success {
+            border-color: var(--accent);
+            background: rgba(20, 184, 166, 0.1);
+        }
+
+        .arch-row {
+            display: flex;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .arch-arrow {
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+        }
+
+        .arch-merge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Principles */
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .principle-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .principle-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--gradient-1);
+        }
+
+        .principle-number {
+            font-size: 3rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            opacity: 0.3;
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+        }
+
+        .principle-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .principle-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            background: var(--bg-card);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-title {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .code-copy {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .code-copy:hover {
+            color: var(--text-primary);
+            background: var(--bg-card-hover);
+        }
+
+        .code-content {
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+
+        .code-content pre {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #e6edf3;
+        }
+
+        .code-content .comment { color: #8b949e; }
+        .code-content .keyword { color: #ff7b72; }
+        .code-content .string { color: #a5d6ff; }
+        .code-content .function { color: #d2a8ff; }
+
+        /* Skill Guide */
+        .skill-structure {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .skill-structure h3 {
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .file-tree {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+        }
+
+        .file-tree-item {
+            padding: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .file-tree-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .file-tree-item.folder i { color: #f97316; }
+        .file-tree-item.file i { color: #6366f1; }
+
+        /* Tips */
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .tip-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .tip-card h4 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .tip-card ul {
+            list-style: none;
+            padding-left: 1.5rem;
+        }
+
+        .tip-card li {
+            position: relative;
+            padding: 0.5rem 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .tip-card li::before {
+            content: '→';
+            position: absolute;
+            left: -1.5rem;
+            color: var(--primary);
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 3rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2rem;
+            top: 0.5rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 3px solid var(--bg-dark);
+        }
+
+        .timeline-item h4 {
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-item p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* CTA Section */
+        .cta {
+            text-align: center;
+            padding: 6rem 2rem;
+            background: linear-gradient(180deg, transparent 0%, rgba(99, 102, 241, 0.05) 100%);
+        }
+
+        .cta h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .cta p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .stats {
+                flex-direction: column;
+                gap: 2rem;
+            }
+
+            .arch-row {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+        }
+
+        /* Scroll Animation */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease-out;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Prompt Section */
+        .prompt-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+            border: 1px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .prompt-box h4 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .prompt-content {
+            background: var(--bg-dark);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+        }
+
+        /* Table */
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.95rem;
+        }
+
+        .styled-table th,
+        .styled-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .styled-table th {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .styled-table td {
+            color: var(--text-secondary);
+        }
+
+        .styled-table tr:hover td {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        /* Tag */
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 50px;
+            font-size: 0.8rem;
+            color: var(--primary);
+        }
+
+        .tag.success {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        .tag.warning {
+            background: rgba(249, 115, 22, 0.1);
+            border-color: rgba(249, 115, 22, 0.3);
+            color: #f97316;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="container">
+            <div class="logo">scanned-pdf-to-md</div>
+            <ul class="nav-links">
+                <li><a href="#methodology">方法论</a></li>
+                <li><a href="#architecture">架构</a></li>
+                <li><a href="#skill-guide">Skill指南</a></li>
+                <li><a href="#prompts">提示词</a></li>
+                <li><a href="#extend">延伸开发</a></li>
+            </ul>
+            <a href="https://github.com/chituhouse/scanned-pdf-to-md" target="_blank" class="github-btn">
+                <i class="fab fa-github"></i>
+                GitHub
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="badge">
+                <i class="fas fa-sparkles"></i>
+                Claude Code + Custom Skill
+            </div>
+            <h1>双源OCR<span>交叉验证</span><br>方法论与实践指南</h1>
+            <p>将扫描版PDF转换为高质量Markdown，通过双OCR源交叉验证策略，准确率从70%提升至95%+。本指南分享完整的设计思路、实操流程和Skill开发经验。</p>
+            <div class="hero-buttons">
+                <a href="#methodology" class="btn btn-primary">
+                    <i class="fas fa-book"></i>
+                    阅读指南
+                </a>
+                <a href="https://github.com/chituhouse/scanned-pdf-to-md" target="_blank" class="btn btn-secondary">
+                    <i class="fab fa-github"></i>
+                    查看源码
+                </a>
+            </div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">95%+</div>
+                    <div class="stat-label">识别准确率</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">20套</div>
+                    <div class="stat-label">验证题目</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">371页</div>
+                    <div class="stat-label">PDF处理</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Methodology -->
+    <section id="methodology" class="fade-in">
+        <div class="section-header">
+            <h2>核心方法论</h2>
+            <p>为什么需要双源交叉验证？单一OCR引擎无法解决所有问题</p>
+        </div>
+
+        <h3 style="margin-bottom: 2rem; text-align: center;">问题：单一OCR的局限性</h3>
+        <div class="problem-solution">
+            <div class="card">
+                <div class="card-icon red"><i class="fas fa-times-circle"></i></div>
+                <h3>识别误差</h3>
+                <p>选项错位、文字识别错误、表格结构破损，单一引擎无法完全避免</p>
+            </div>
+            <div class="card">
+                <div class="card-icon red"><i class="fas fa-water"></i></div>
+                <h3>水印干扰</h3>
+                <p>培训机构水印混入正文（如"小象教育"、"抖音"等），污染内容</p>
+            </div>
+            <div class="card">
+                <div class="card-icon red"><i class="fas fa-random"></i></div>
+                <h3>格式混乱</h3>
+                <p>选项格式不统一（A.xxx vs A、xxx），括号类型混用</p>
+            </div>
+            <div class="card">
+                <div class="card-icon red"><i class="fas fa-eye-slash"></i></div>
+                <h3>内容缺失</h3>
+                <p>部分选项或题目未被识别，单源无法补齐</p>
+            </div>
+        </div>
+
+        <h3 style="margin: 4rem 0 2rem; text-align: center;">解决：双源互补策略</h3>
+        <div class="problem-solution">
+            <div class="card">
+                <div class="card-icon blue"><i class="fas fa-file-alt"></i></div>
+                <h3>通用OCR</h3>
+                <p><strong>优势：</strong>文字完整度高、题号识别稳定<br><strong>劣势：</strong>表格结构差、选项可能连成一行</p>
+            </div>
+            <div class="card">
+                <div class="card-icon purple"><i class="fas fa-table"></i></div>
+                <h3>智能文档解析</h3>
+                <p><strong>优势：</strong>表格识别优秀、选项换行准确<br><strong>劣势：</strong>可能漏识部分文字</p>
+            </div>
+            <div class="card">
+                <div class="card-icon green"><i class="fas fa-check-double"></i></div>
+                <h3>交叉验证</h3>
+                <p><strong>核心洞察：</strong>两个OCR源的错误通常不会出现在同一位置，取长补短即可</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture -->
+    <section id="architecture" class="fade-in">
+        <div class="section-header">
+            <h2>系统架构</h2>
+            <p>从PDF输入到高质量Markdown输出的完整流程</p>
+        </div>
+
+        <div class="architecture">
+            <div class="arch-flow">
+                <div class="arch-node">
+                    <i class="fas fa-file-pdf" style="color: #ef4444; margin-right: 0.5rem;"></i>
+                    扫描版PDF（371页）
+                </div>
+                <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+                <div class="arch-row">
+                    <div class="arch-node">
+                        <strong>路径A：通用OCR</strong><br>
+                        <small style="color: var(--text-secondary);">火山引擎 OCRNormal</small>
+                    </div>
+                    <div class="arch-node">
+                        <strong>路径B：智能文档解析</strong><br>
+                        <small style="color: var(--text-secondary);">火山引擎 OCRPdf</small>
+                    </div>
+                </div>
+                <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+                <div class="arch-row">
+                    <div class="arch-node">纯OCR版.md</div>
+                    <div class="arch-node">文档解析版.md</div>
+                </div>
+                <div class="arch-merge">
+                    <div class="arch-arrow"><i class="fas fa-arrows-alt-v"></i></div>
+                    <small style="color: var(--text-secondary);">合并对比</small>
+                </div>
+                <div class="arch-node primary">
+                    <i class="fas fa-robot" style="margin-right: 0.5rem;"></i>
+                    <strong>Claude Code 交叉验证</strong><br>
+                    <small style="color: var(--text-secondary);">/cross-validate-ocr Skill</small>
+                </div>
+                <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+                <div class="arch-node success">
+                    <i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>
+                    高质量 Markdown（95%+ 准确率）
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Principles -->
+    <section class="fade-in">
+        <div class="section-header">
+            <h2>四大核心原则</h2>
+            <p>项目成功的关键设计决策</p>
+        </div>
+
+        <div class="principles-grid">
+            <div class="principle-card">
+                <span class="principle-number">01</span>
+                <h3>双源互补，不是二选一</h3>
+                <p>错误做法：选择"更好"的版本<br>正确做法：合并两个版本，生成完整内容。一版缺选项D，另一版有，合并即可。</p>
+            </div>
+            <div class="principle-card">
+                <span class="principle-number">02</span>
+                <h3>逐套处理，不批量操作</h3>
+                <p>教训：批量处理20套题，后期精度明显下降。改为逐套处理，每套确认后再继续，质量可控。</p>
+            </div>
+            <div class="principle-card">
+                <span class="principle-number">03</span>
+                <h3>铁律原则，防止AI发挥</h3>
+                <p>不发挥：只用源文档已有内容<br>不编造：缺失标注[缺失]<br>不修改：只修格式，不改文字</p>
+            </div>
+            <div class="principle-card">
+                <span class="principle-number">04</span>
+                <h3>验证报告，全程透明</h3>
+                <p>每套题处理后生成报告：修复了什么、来源哪个版本、待人工确认项。可追溯、可复核。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Skill Guide -->
+    <section id="skill-guide" class="fade-in">
+        <div class="section-header">
+            <h2>Skill 开发指南</h2>
+            <p>如何设计一个高质量的 Claude Code Skill</p>
+        </div>
+
+        <div class="skill-structure">
+            <h3><i class="fas fa-folder-tree"></i> Skill 文件结构</h3>
+            <div class="file-tree">
+                <div class="file-tree-item folder"><i class="fas fa-folder"></i> .claude/</div>
+                <div class="file-tree-item folder" style="padding-left: 1.5rem;"><i class="fas fa-folder"></i> skills/</div>
+                <div class="file-tree-item folder" style="padding-left: 3rem;"><i class="fas fa-folder"></i> cross-validate-ocr/</div>
+                <div class="file-tree-item file" style="padding-left: 4.5rem;"><i class="fas fa-file-code"></i> SKILL.md <span class="tag">核心文件</span></div>
+            </div>
+        </div>
+
+        <h3 style="margin: 3rem 0 1.5rem;">Skill 文件结构要素</h3>
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>部分</th>
+                    <th>作用</th>
+                    <th>示例</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Frontmatter</strong></td>
+                    <td>定义名称和描述</td>
+                    <td><code>name: cross-validate-ocr</code></td>
+                </tr>
+                <tr>
+                    <td><strong>输入定义</strong></td>
+                    <td>明确输入文件/数据</td>
+                    <td>纯OCR版.md + 文档解析版.md</td>
+                </tr>
+                <tr>
+                    <td><strong>工作流程</strong></td>
+                    <td>分步骤描述操作</td>
+                    <td>分割 → 验证 → 格式化 → 输出</td>
+                </tr>
+                <tr>
+                    <td><strong>验证规则</strong></td>
+                    <td>约束AI行为的铁律</td>
+                    <td>不发挥、不编造、不修改</td>
+                </tr>
+                <tr>
+                    <td><strong>输出格式</strong></td>
+                    <td>定义输出结构</td>
+                    <td>验证报告 + 正文内容</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="tips-grid">
+            <div class="tip-card">
+                <h4><i class="fas fa-lightbulb"></i> 设计要点</h4>
+                <ul>
+                    <li>明确输入输出，不留模糊空间</li>
+                    <li>分步骤描述，每步有明确动作</li>
+                    <li>设置铁律约束AI"发挥"倾向</li>
+                    <li>优先级规则处理冲突场景</li>
+                    <li>输出模板确保格式一致</li>
+                </ul>
+            </div>
+            <div class="tip-card">
+                <h4><i class="fas fa-exclamation-triangle"></i> 避坑指南</h4>
+                <ul>
+                    <li>不要批量处理大量数据（精度下降）</li>
+                    <li>不要让AI自行判断"更好"（容易乱改）</li>
+                    <li>不要省略验证报告（无法追溯）</li>
+                    <li>不要用模糊词汇（"适当"、"合理"）</li>
+                    <li>不要跳过人工确认环节</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prompts -->
+    <section id="prompts" class="fade-in">
+        <div class="section-header">
+            <h2>提示词设计要点</h2>
+            <p>Skill 中的关键提示词模式</p>
+        </div>
+
+        <div class="prompt-box">
+            <h4><i class="fas fa-code"></i> 铁律约束模式</h4>
+            <div class="prompt-content">## 验证规则（必须严格遵守）
+
+### 铁律
+1. **不发挥、不编造**：只使用两个MD文档中已有的内容
+2. **不猜测答案**：如果两版都没有某内容，标注 `[缺失]` 而不是编造
+3. **保留原文**：修复格式问题，但不修改题目文字本身</div>
+        </div>
+
+        <div class="prompt-box">
+            <h4><i class="fas fa-code"></i> 优先级规则模式</h4>
+            <div class="prompt-content">### 优先级规则
+| 内容类型 | 优先采用 | 原因 |
+|:---|:---|:---|
+| 表格 | 文档解析版 | Markdown格式更好 |
+| 选项文本 | 文档解析版 | 换行更准确 |
+| 题目文本 | 对比取更完整的 | 两版各有优劣 |
+| 题号 | 纯OCR版 | 识别更稳定 |</div>
+        </div>
+
+        <div class="prompt-box">
+            <h4><i class="fas fa-code"></i> 分步执行模式</h4>
+            <div class="prompt-content">### 第二步：逐套交叉验证
+
+**重要：必须一套一套处理，绝对不能批量处理！每套处理完必须展示报告给用户确认！**
+
+#### 2.1 逐题合并
+对每道题执行：
+1. 从纯OCR版提取题目内容
+2. 从文档解析版提取同一题内容
+3. **合并生成完整题目**：
+   - 题目文本：取更完整的一版
+   - 选项A/B/C/D：对比两版，取有内容的
+4. 输出标准格式</div>
+        </div>
+
+        <div class="prompt-box">
+            <h4><i class="fas fa-code"></i> 冲突处理模式</h4>
+            <div class="prompt-content">### 冲突处理
+当两版内容明显不一致时：
+- 保留两者内容
+- 添加标注：`[待人工确认：版本A为xxx，版本B为yyy]`
+- 记录到验证报告中</div>
+        </div>
+
+        <h3 style="margin: 3rem 0 1.5rem;">提示词设计原则</h3>
+        <div class="principles-grid">
+            <div class="principle-card">
+                <span class="principle-number">A</span>
+                <h3>具体 > 抽象</h3>
+                <p>❌ "处理格式问题"<br>✅ "选项格式统一为 A. xxx（字母+点+空格+内容）"</p>
+            </div>
+            <div class="principle-card">
+                <span class="principle-number">B</span>
+                <h3>规则 > 判断</h3>
+                <p>❌ "选择更好的版本"<br>✅ "表格优先采用文档解析版"</p>
+            </div>
+            <div class="principle-card">
+                <span class="principle-number">C</span>
+                <h3>约束 > 自由</h3>
+                <p>❌ "适当补充内容"<br>✅ "不编造，缺失标注[缺失]"</p>
+            </div>
+            <div class="principle-card">
+                <span class="principle-number">D</span>
+                <h3>示例 > 描述</h3>
+                <p>❌ "输出标准格式"<br>✅ 提供完整的输出模板示例</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Extend -->
+    <section id="extend" class="fade-in">
+        <div class="section-header">
+            <h2>延伸开发指南</h2>
+            <p>基于本方法论开发你自己的 Skill</p>
+        </div>
+
+        <h3 style="margin-bottom: 2rem;">复刻步骤</h3>
+        <div class="timeline">
+            <div class="timeline-item">
+                <h4>1. 识别你的"双源"</h4>
+                <p>任何需要交叉验证的场景都可以套用。例如：两个翻译引擎、两个代码生成模型、两个数据来源。关键是找到互补的两个源。</p>
+            </div>
+            <div class="timeline-item">
+                <h4>2. 定义合并规则</h4>
+                <p>明确每种内容类型的优先级。不要让AI自行判断"哪个更好"，而是给出明确规则。</p>
+            </div>
+            <div class="timeline-item">
+                <h4>3. 设置铁律约束</h4>
+                <p>AI倾向于"发挥"和"优化"。必须用铁律约束：不编造、不猜测、不过度修改。</p>
+            </div>
+            <div class="timeline-item">
+                <h4>4. 设计验证报告</h4>
+                <p>每次处理后输出报告，记录做了什么、来源是什么。这是质量保证的关键。</p>
+            </div>
+            <div class="timeline-item">
+                <h4>5. 分批处理</h4>
+                <p>不要一次性处理大量数据。分批处理，每批确认后再继续。</p>
+            </div>
+        </div>
+
+        <h3 style="margin: 4rem 0 2rem;">可延伸场景</h3>
+        <div class="problem-solution">
+            <div class="card">
+                <div class="card-icon teal"><i class="fas fa-language"></i></div>
+                <h3>翻译交叉验证</h3>
+                <p>结合 Google Translate + DeepL，对比合并，提升翻译质量</p>
+            </div>
+            <div class="card">
+                <div class="card-icon orange"><i class="fas fa-code"></i></div>
+                <h3>代码生成验证</h3>
+                <p>结合 GPT-4 + Claude 生成的代码，取各自优势部分</p>
+            </div>
+            <div class="card">
+                <div class="card-icon blue"><i class="fas fa-database"></i></div>
+                <h3>数据清洗验证</h3>
+                <p>结合多个数据源，交叉验证数据准确性</p>
+            </div>
+            <div class="card">
+                <div class="card-icon purple"><i class="fas fa-file-invoice"></i></div>
+                <h3>发票OCR验证</h3>
+                <p>结合多个OCR引擎，确保金额、日期等关键字段准确</p>
+            </div>
+        </div>
+
+        <div class="code-block" style="margin-top: 3rem;">
+            <div class="code-header">
+                <span class="code-title">创建你的 Skill</span>
+                <button class="code-copy" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
+            </div>
+            <div class="code-content">
+<pre><span class="comment"># 1. 创建 Skill 目录</span>
+mkdir -p .claude/skills/my-cross-validator
+
+<span class="comment"># 2. 创建 SKILL.md 文件</span>
+cat > .claude/skills/my-cross-validator/SKILL.md << 'EOF'
+---
+name: my-cross-validator
+description: 我的交叉验证 Skill
+---
+
+<span class="comment"># 输入定义</span>
+...
+
+<span class="comment"># 工作流程</span>
+...
+
+<span class="comment"># 验证规则</span>
+...
+
+<span class="comment"># 输出格式</span>
+...
+EOF
+
+<span class="comment"># 3. 在 Claude Code 中使用</span>
+claude
+<span class="comment"># 输入: /my-cross-validator</span></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta fade-in">
+        <h2>开始构建你的 Skill</h2>
+        <p>克隆项目，参考方法论，开发适合你场景的交叉验证流水线</p>
+        <div class="hero-buttons">
+            <a href="https://github.com/chituhouse/scanned-pdf-to-md" target="_blank" class="btn btn-primary">
+                <i class="fab fa-github"></i>
+                克隆项目
+            </a>
+            <a href="https://github.com/chituhouse/scanned-pdf-to-md/blob/main/.claude/skills/cross-validate-ocr/SKILL.md" target="_blank" class="btn btn-secondary">
+                <i class="fas fa-file-code"></i>
+                查看 Skill 源码
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>Made with <i class="fas fa-heart" style="color: #ef4444;"></i> and <a href="https://claude.ai/claude-code" target="_blank">Claude Code</a></p>
+        <p style="margin-top: 0.5rem; font-size: 0.85rem;">
+            <a href="https://github.com/chituhouse/scanned-pdf-to-md" target="_blank">GitHub</a> ·
+            MIT License ·
+            2024
+        </p>
+    </footer>
+
+    <script>
+        // Scroll animation
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Copy code
+        function copyCode(btn) {
+            const code = btn.closest('.code-block').querySelector('pre').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-copy"></i>';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
