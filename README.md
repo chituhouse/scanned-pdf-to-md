@@ -131,8 +131,46 @@
 
 - 历年真题PDF转结构化题库
 - 考试资料数字化
+- **扫描书籍转电子文档**（新增）
 - 扫描版文档转Markdown
 - 需要高准确率的OCR场景
+
+---
+
+## 功能模块
+
+### 1. 题库OCR（`/cross-validate-ocr`）
+
+针对考试真题类文档，双源交叉验证，逐套处理。
+
+### 2. 书籍OCR（`/book-ocr`）
+
+将扫描书籍转换为电子文档，支持多种输出格式。
+
+**技术方案：**
+- 双路OCR：通用OCR（文字准确）+ 智能文档解析（结构清晰）
+- 交叉验证：用通用OCR文字修正智能文档解析的结构
+- 图片提取：从智能文档解析检测的图片区域截取
+
+**输出格式：**
+| 格式 | 说明 |
+|:---|:---|
+| Markdown | 源文件，可用Obsidian打开 |
+| Word (.docx) | 从Markdown转换，便于编辑 |
+| ePub | 从Markdown转换，电子书格式 |
+| PDF | 从Markdown转换，打印格式 |
+
+**工作流程：**
+```
+扫描图片 → 双路OCR → 交叉验证 → Markdown → Word/ePub/PDF
+```
+
+**使用方法：**
+```bash
+claude
+/book-ocr
+```
+按提示选择输出格式，确认执行计划后自动处理。
 
 ---
 
@@ -243,12 +281,19 @@ output/
 scanned-pdf-to-md/
 ├── .claude/
 │   └── skills/
-│       └── cross-validate-ocr/
-│           └── SKILL.md          # 交叉验证技能定义（核心）
+│       ├── cross-validate-ocr/
+│       │   └── SKILL.md          # 题库交叉验证技能
+│       └── book-ocr/
+│           └── SKILL.md          # 书籍OCR技能（新增）
 ├── PDF_image/                     # PDF提取的页面图片
 ├── output/
 │   ├── raw_ocr/                   # 通用OCR原始结果（JSON）
 │   ├── pdf_ocr/                   # 智能文档解析结果
+│   ├── book_ocr/                  # 书籍OCR输出（新增）
+│   │   ├── raw_normal/            # 通用OCR结果
+│   │   ├── raw_parsed/            # 智能文档解析结果
+│   │   ├── images/                # 提取的图片
+│   │   └── *.md/*.docx/*.epub     # 输出文档
 │   ├── validated/                 # 验证后的分套题文件
 │   └── *.md                       # 各版本Markdown文档
 ├── scripts/
